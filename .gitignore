@@ -1,3 +1,4 @@
 /node_modules
 .env
-commits.json
+allCommits.json
+userCommits.json

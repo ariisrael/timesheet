@@ -7,11 +7,18 @@ dotenv.config()
 const START_DATE = process.env.START_DATE || '2024-07-19'
 const END_DATE = process.env.END_DATE || new Date().toISOString().split('T')[0]
 const TIME_BETWEEN_COMMITS = parseInt(process.env.TIME_BETWEEN_COMMITS) || 6 // hours between commits to consider a new work day
+const USE_CACHED_COMMITS = process.env.USE_CACHED_COMMITS === 'true'
+const GITHUB_USER_EMAILS = process.env.GITHUB_USER_EMAILS.split(',')
 
 async function fetchAllCommits(owner, repo, token) {
   let commits = []
   let page = 1
   let fetchMore = true
+
+  // if Commits files already exist, skip fetch and just return the contents of the files
+  if (USE_CACHED_COMMITS && fs.existsSync('./allCommits.json')) {
+    return JSON.parse(await fs.promises.readFile('./allCommits.json', 'utf8'))
+  }
 
   while (fetchMore) {
     const url = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100&page=${page}`
@@ -79,27 +86,39 @@ async function fetchCommitDetails(owner, repo, sha, token) {
   return { additions, deletions, totalChanges }
 }
 
+function getUserCommits(commits) {
+  return commits.filter((commit) => GITHUB_USER_EMAILS.includes(commit.email))
+}
+
 async function processCommitsToJSON() {
   const owner = process.env.GITHUB_OWNER
   const repo = process.env.GITHUB_REPO
   const token = process.env.GITHUB_TOKEN
 
-  const commits = await fetchAllCommits(owner, repo, token)
-  commits.sort(
+  const allCommits = await fetchAllCommits(owner, repo, token)
+
+  allCommits.sort(
     (a, b) =>
       new Date(`${a.date}T${a.time}${a.tz}`) -
       new Date(`${b.date}T${b.time}${b.tz}`)
   )
 
-  const commitsWithTimeSinceLastCommit = commits.map((commit, index) => {
+  const userCommits = getUserCommits(allCommits)
+
+  const commitsWithTimeSinceLastCommit = userCommits.map((commit, index) => {
     if (index === 0) return { ...commit, timeSinceLastCommit: 0 }
-    const previousCommit = commits[index - 1]
+    const previousCommit = userCommits[index - 1]
     const timeSinceLastCommit = getTimeUntilNextCommit(previousCommit, commit)
     return { ...commit, timeSinceLastCommit }
   })
 
   await fs.promises.writeFile(
-    './commits.json',
+    './allCommits.json',
+    JSON.stringify(allCommits, null, 2)
+  )
+
+  await fs.promises.writeFile(
+    './userCommits.json',
     JSON.stringify(commitsWithTimeSinceLastCommit, null, 2)
   )
 }
@@ -113,17 +132,11 @@ function getTimeUntilNextCommit(commit1, commit2) {
 }
 
 async function inferWorkDays() {
-  const commits = JSON.parse(
-    await fs.promises.readFile('./commits.json', 'utf8')
+  const userCommits = JSON.parse(
+    await fs.promises.readFile('./userCommits.json', 'utf8')
   )
 
-  commits.sort(
-    (a, b) =>
-      new Date(`${a.date}T${a.time}${a.tz}`) -
-      new Date(`${b.date}T${b.time}${b.tz}`)
-  )
-
-  return commits.reduce((acc, commit) => {
+  return userCommits.reduce((acc, commit) => {
     const commitDate = new Date(`${commit.date}T${commit.time}${commit.tz}`)
     const lastWorkDay = acc.length > 0 ? acc[acc.length - 1] : null
 
@@ -196,28 +209,27 @@ function findLongestWorkday(hoursPerDay) {
   )
 }
 
-function calculateUserCommitPercentage(commits) {
-  const userCommits = commits.filter(
-    (commit) => commit.email === process.env.GITHUB_USER_EMAIL
-  ).length
-  const totalCommits = commits.length
-  return (userCommits / totalCommits) * 100
+function calculateUserCommitPercentage(userCommits, allCommits) {
+  return (userCommits.length / allCommits.length) * 100
 }
 
-function calculateUserLOCPercentage(commits) {
-  const userAdditions = commits
-    .filter((commit) => commit.email === process.env.GITHUB_USER_EMAIL)
-    .reduce((sum, commit) => sum + commit.additions, 0)
-  const userDeletions = commits
-    .filter((commit) => commit.email === process.env.GITHUB_USER_EMAIL)
-    .reduce((sum, commit) => sum + commit.deletions, 0)
-  const userTotalChanges = userAdditions + userDeletions
-
-  const totalAdditions = commits.reduce(
+function calculateUserLOCPercentage(userCommits, allCommits) {
+  const userAdditions = userCommits.reduce(
     (sum, commit) => sum + commit.additions,
     0
   )
-  const totalDeletions = commits.reduce(
+  const userDeletions = userCommits.reduce(
+    (sum, commit) => sum + commit.deletions,
+    0
+  )
+
+  const userTotalChanges = userAdditions + userDeletions
+
+  const totalAdditions = allCommits.reduce(
+    (sum, commit) => sum + commit.additions,
+    0
+  )
+  const totalDeletions = allCommits.reduce(
     (sum, commit) => sum + commit.deletions,
     0
   )
@@ -235,29 +247,36 @@ async function main() {
     START_DATE,
     END_DATE
   )
+
   const longestWorkday = findLongestWorkday(hoursWorkedPerDay)
 
-  const commits = JSON.parse(
-    await fs.promises.readFile('./commits.json', 'utf8')
+  const allCommits = JSON.parse(
+    await fs.promises.readFile('./allCommits.json', 'utf8')
   )
-  const commitPercentage = calculateUserCommitPercentage(commits)
-  const locPercentage = calculateUserLOCPercentage(commits)
+  const userCommits = JSON.parse(
+    await fs.promises.readFile('./userCommits.json', 'utf8')
+  )
+  const commitPercentage = calculateUserCommitPercentage(
+    userCommits,
+    allCommits
+  )
+  const locPercentage = calculateUserLOCPercentage(userCommits, allCommits)
 
-  const totalAdditions = commits.reduce(
+  const totalAdditions = userCommits.reduce(
     (sum, commit) => sum + commit.additions,
     0
   )
-  const totalDeletions = commits.reduce(
+  const totalDeletions = userCommits.reduce(
     (sum, commit) => sum + commit.deletions,
     0
   )
-  const totalChanges = commits.reduce(
+  const totalChanges = userCommits.reduce(
     (sum, commit) => sum + commit.totalChanges,
     0
   )
 
   console.log(
-    `Timesheet for  ${chalk.green.bold(process.env.GITHUB_USER_EMAIL)}`
+    `Timesheet for  ${chalk.green.bold(process.env.GITHUB_USER_EMAILS)}`
   )
   console.log(
     `Between ${chalk.green.bold(START_DATE)} and ${chalk.green.bold(END_DATE)}`
@@ -275,12 +294,12 @@ async function main() {
   console.log('-'.repeat(80))
   console.log(
     `Percentage of total commits by ${chalk.blue.bold(
-      process.env.GITHUB_USER_EMAIL
+      process.env.GITHUB_USER_EMAILS
     )}: ${chalk.blue.bold(commitPercentage.toFixed(2))}%`
   )
   console.log(
     `Percentage of total lines of code changed by ${chalk.green.bold(
-      process.env.GITHUB_USER_EMAIL
+      process.env.GITHUB_USER_EMAILS
     )}: ${chalk.green.bold(locPercentage.toFixed(2))}%`
   )
   console.log('='.repeat(80))
@@ -288,7 +307,7 @@ async function main() {
     `~${chalk.green.bold(
       Math.floor(Math.abs(hoursInRange))
     )} hours worked by ${chalk.green.bold(
-      process.env.GITHUB_USER_EMAIL
+      process.env.GITHUB_USER_EMAILS
     )} between ${chalk.green.bold(START_DATE)} and ${chalk.green.bold(
       END_DATE
     )}`

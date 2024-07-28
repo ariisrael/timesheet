@@ -60,10 +60,11 @@ npm start
 - `GITHUB_OWNER`: The GitHub username or organization that owns the repository.
 - `GITHUB_REPO`: The name of the repository.
 - `GITHUB_TOKEN`: Your GitHub personal access token. You can generate this token from your GitHub account settings under `Developer settings` > `Personal access tokens`.
-- `GITHUB_USER_EMAIL`: The GitHub email of the user for whom you are generating a timesheet
+- `GITHUB_USER_EMAILS`: The GitHub email(s) of the user for whom you are generating a timesheet, separated by commas.
 - `START_DATE`: The start date for the analysis (e.g., `2024-07-19`).
 - `END_DATE`: The end date for the analysis (e.g., `2024-07-20`). Use `null` for today.
 - `TIME_BETWEEN_COMMITS`: The number of hours between commits to consider a new workday (default: 10).
+- `USE_CACHED_COMMITS`: Use commits in `allCommits.json` once you hit the GitHub API once to avoid ratelimit.
 
 ## Generating a GitHub Personal Access Token
 
