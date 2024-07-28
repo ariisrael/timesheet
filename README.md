@@ -3,6 +3,8 @@
 
 This script fetches commits from a specified GitHub repository and analyzes workdays based on commit activity. It calculates the total hours worked each day and within a specified date range.
 
+![Example output](./output.png)
+
 ## Prerequisites
 
 - Node.js (v20 or later)
