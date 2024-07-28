@@ -33,7 +33,7 @@ This script fetches commits from a specified GitHub repository and analyzes work
    ```env
    GITHUB_OWNER=gosabo
    GITHUB_REPO=web
-   GITHUB_USER_EMAIL=github_email_for_timesheet_user@example.com
+   GITHUB_USER_EMAILS=github_email_for_timesheet_user@example.com
    GITHUB_TOKEN=your_personal_access_token
    START_DATE=2024-07-19
    END_DATE=null # null means today, or specify a date like 2024-07-20
