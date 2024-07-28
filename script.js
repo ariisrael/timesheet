@@ -1,5 +1,8 @@
-const fs = require('fs')
-require('dotenv').config()
+import fs from 'fs'
+import dotenv from 'dotenv'
+import chalk from 'chalk'
+
+dotenv.config()
 
 const START_DATE = process.env.START_DATE || '2024-07-19'
 const END_DATE = process.env.END_DATE || new Date().toISOString().split('T')[0]
@@ -255,23 +258,31 @@ async function main() {
   )
 
   console.log(
-    `~${Math.floor(Math.abs(hoursInRange))} hours worked by ${
+    `~${chalk.green.bold(
+      Math.floor(Math.abs(hoursInRange))
+    )} hours worked by ${chalk.green.bold(
       process.env.GITHUB_USER_EMAIL
-    } between ${START_DATE} and ${END_DATE}`
+    )} between ${chalk.green.bold(START_DATE)} and ${chalk.green.bold(
+      END_DATE
+    )}`
   )
   console.log(
-    `Percentage of total commits by ${
+    `Percentage of total commits by ${chalk.blue.bold(
       process.env.GITHUB_USER_EMAIL
-    }: ${commitPercentage.toFixed(2)}%`
+    )}: ${chalk.blue.bold(commitPercentage.toFixed(2))}%`
   )
-  console.log(`Longest workday: ${longestWorkday.totalHours} hours`)
-  console.log(`Total lines of code added: ${totalAdditions}`)
-  console.log(`Total lines of code deleted: ${totalDeletions}`)
-  console.log(`Total lines of code changed: ${totalChanges}`)
   console.log(
-    `Percentage of total lines of code changed by ${
+    `Longest workday: ${chalk.yellow.bold(longestWorkday.totalHours)} hours`
+  )
+  console.log(
+    `Total lines of code added: ${chalk.magenta.bold(totalAdditions)}`
+  )
+  console.log(`Total lines of code deleted: ${chalk.red.bold(totalDeletions)}`)
+  console.log(`Total lines of code changed: ${chalk.cyan.bold(totalChanges)}`)
+  console.log(
+    `Percentage of total lines of code changed by ${chalk.green.bold(
       process.env.GITHUB_USER_EMAIL
-    }: ${locPercentage.toFixed(2)}%`
+    )}: ${chalk.green.bold(locPercentage.toFixed(2))}%`
   )
 }
 
