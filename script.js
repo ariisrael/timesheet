@@ -56,7 +56,6 @@ async function fetchAllCommits(owner, repo, token) {
     }
   }
 
-  console.log(`Total commits fetched: ${commits.length}`)
   return commits
 }
 
@@ -258,6 +257,34 @@ async function main() {
   )
 
   console.log(
+    `Timesheet for  ${chalk.green.bold(process.env.GITHUB_USER_EMAIL)}`
+  )
+  console.log(
+    `Between ${chalk.green.bold(START_DATE)} and ${chalk.green.bold(END_DATE)}`
+  )
+  console.log('='.repeat(80))
+  console.log(
+    `Longest workday: ${chalk.yellow.bold(longestWorkday.totalHours)} hours`
+  )
+  console.log('-'.repeat(80))
+  console.log(
+    `Total lines of code added: ${chalk.magenta.bold(totalAdditions)}`
+  )
+  console.log(`Total lines of code deleted: ${chalk.red.bold(totalDeletions)}`)
+  console.log(`Total lines of code changed: ${chalk.cyan.bold(totalChanges)}`)
+  console.log('-'.repeat(80))
+  console.log(
+    `Percentage of total commits by ${chalk.blue.bold(
+      process.env.GITHUB_USER_EMAIL
+    )}: ${chalk.blue.bold(commitPercentage.toFixed(2))}%`
+  )
+  console.log(
+    `Percentage of total lines of code changed by ${chalk.green.bold(
+      process.env.GITHUB_USER_EMAIL
+    )}: ${chalk.green.bold(locPercentage.toFixed(2))}%`
+  )
+  console.log('='.repeat(80))
+  console.log(
     `~${chalk.green.bold(
       Math.floor(Math.abs(hoursInRange))
     )} hours worked by ${chalk.green.bold(
@@ -265,24 +292,6 @@ async function main() {
     )} between ${chalk.green.bold(START_DATE)} and ${chalk.green.bold(
       END_DATE
     )}`
-  )
-  console.log(
-    `Percentage of total commits by ${chalk.blue.bold(
-      process.env.GITHUB_USER_EMAIL
-    )}: ${chalk.blue.bold(commitPercentage.toFixed(2))}%`
-  )
-  console.log(
-    `Longest workday: ${chalk.yellow.bold(longestWorkday.totalHours)} hours`
-  )
-  console.log(
-    `Total lines of code added: ${chalk.magenta.bold(totalAdditions)}`
-  )
-  console.log(`Total lines of code deleted: ${chalk.red.bold(totalDeletions)}`)
-  console.log(`Total lines of code changed: ${chalk.cyan.bold(totalChanges)}`)
-  console.log(
-    `Percentage of total lines of code changed by ${chalk.green.bold(
-      process.env.GITHUB_USER_EMAIL
-    )}: ${chalk.green.bold(locPercentage.toFixed(2))}%`
   )
 }
 
