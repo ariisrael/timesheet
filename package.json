@@ -1,0 +1,17 @@
+{
+  "name": "timesheet",
+  "version": "1.0.0",
+  "main": "script.js",
+  "description": "A script to calculate how many hours I've worked based on commit history",
+  "author": "Ari Israel",
+  "license": "ISC",
+  "scripts": {
+    "start": "node script.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
