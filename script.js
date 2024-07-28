@@ -3,7 +3,7 @@ require('dotenv').config()
 
 const START_DATE = process.env.START_DATE || '2024-07-19'
 const END_DATE = process.env.END_DATE || new Date().toISOString().split('T')[0]
-const TIME_BETWEEN_COMMITS = parseInt(process.env.TIME_BETWEEN_COMMITS) || 10 // hours between commits to consider a new work day
+const TIME_BETWEEN_COMMITS = parseInt(process.env.TIME_BETWEEN_COMMITS) || 6 // hours between commits to consider a new work day
 
 async function fetchAllCommits(owner, repo, token) {
   let commits = []
@@ -123,13 +123,12 @@ async function inferWorkDays() {
 
   return commits.reduce((acc, commit) => {
     const commitDate = new Date(`${commit.date}T${commit.time}${commit.tz}`)
-    const lastCommit = acc.length > 0 ? acc[acc.length - 1] : null
+    const lastWorkDay = acc.length > 0 ? acc[acc.length - 1] : null
 
-    if (lastCommit) {
+    if (lastWorkDay) {
+      const lastCommit = lastWorkDay.commits[lastWorkDay.commits.length - 1]
       const lastCommitDate = new Date(
-        `${lastCommit.date}T${
-          lastCommit.commits[lastCommit.commits.length - 1].time
-        }${lastCommit.commits[lastCommit.commits.length - 1].tz}`
+        `${lastCommit.date}T${lastCommit.time}${lastCommit.tz}`
       )
       const hoursSinceLastCommit =
         (commitDate - lastCommitDate) / (1000 * 60 * 60)
@@ -140,7 +139,7 @@ async function inferWorkDays() {
           commits: [commit],
         })
       } else {
-        lastCommit.commits.push(commit)
+        lastWorkDay.commits.push(commit)
       }
     } else {
       acc.push({
@@ -203,6 +202,28 @@ function calculateUserCommitPercentage(commits) {
   return (userCommits / totalCommits) * 100
 }
 
+function calculateUserLOCPercentage(commits) {
+  const userAdditions = commits
+    .filter((commit) => commit.email === process.env.GITHUB_USER_EMAIL)
+    .reduce((sum, commit) => sum + commit.additions, 0)
+  const userDeletions = commits
+    .filter((commit) => commit.email === process.env.GITHUB_USER_EMAIL)
+    .reduce((sum, commit) => sum + commit.deletions, 0)
+  const userTotalChanges = userAdditions + userDeletions
+
+  const totalAdditions = commits.reduce(
+    (sum, commit) => sum + commit.additions,
+    0
+  )
+  const totalDeletions = commits.reduce(
+    (sum, commit) => sum + commit.deletions,
+    0
+  )
+  const totalChanges = totalAdditions + totalDeletions
+
+  return (userTotalChanges / totalChanges) * 100
+}
+
 async function main() {
   await processCommitsToJSON()
   const workDays = await inferWorkDays()
@@ -218,6 +239,7 @@ async function main() {
     await fs.promises.readFile('./commits.json', 'utf8')
   )
   const commitPercentage = calculateUserCommitPercentage(commits)
+  const locPercentage = calculateUserLOCPercentage(commits)
 
   const totalAdditions = commits.reduce(
     (sum, commit) => sum + commit.additions,
@@ -242,9 +264,15 @@ async function main() {
       process.env.GITHUB_USER_EMAIL
     }: ${commitPercentage.toFixed(2)}%`
   )
+  console.log(`Longest workday: ${longestWorkday.totalHours} hours`)
   console.log(`Total lines of code added: ${totalAdditions}`)
   console.log(`Total lines of code deleted: ${totalDeletions}`)
   console.log(`Total lines of code changed: ${totalChanges}`)
+  console.log(
+    `Percentage of total lines of code changed by ${
+      process.env.GITHUB_USER_EMAIL
+    }: ${locPercentage.toFixed(2)}%`
+  )
 }
 
 main().catch(console.error)
